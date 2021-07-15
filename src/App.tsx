@@ -20,6 +20,7 @@ import { ActionComponent } from './components/ActionComponent';
 import { getIpInfo } from './requests/geoapify';
 import { createPointVector } from './utils/createPoints';
 import { PageInfo } from './components/PageInfo';
+import { LeftBar } from './components/LeftBar';
 
 function App() {
   const [map, setMap] = useState<Map | null>(null);
@@ -98,7 +99,7 @@ function App() {
   return (
     <div className="App">
       <div ref={mapElement} className="ol-map"></div>
-      {map && stopsLayer && startLayer && endLayer && routeLayer && (
+      {/* {map && stopsLayer && startLayer && endLayer && routeLayer && (
         <ActionComponent
           map={map}
           startLayer={startLayer}
@@ -106,7 +107,8 @@ function App() {
           stopsLayer={stopsLayer}
           routeLayer={routeLayer}
         />
-      )}
+      )} */}
+      {map && <LeftBar map={map}/>}
       <PageInfo />
     </div>
   );

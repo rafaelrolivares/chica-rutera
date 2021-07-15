@@ -1,4 +1,3 @@
-import { createEmpty, extend, Extent } from 'ol/extent';
 import Feature from 'ol/Feature';
 import { toLonLat } from 'ol/proj';
 import { Vector as VectorSource } from 'ol/source';
