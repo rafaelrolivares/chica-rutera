@@ -68,7 +68,7 @@ export const AddDestinations = ({ map, layers }: AddDestinationsProps) => {
     return {
       start: layers.startLayer.getFeatures()[0],
       end: layers.endLayer.getFeatures()[0],
-      stops: layers.endLayer.getFeatures(),
+      stops: layers.stopsLayer.getFeatures(),
     };
   };
 
