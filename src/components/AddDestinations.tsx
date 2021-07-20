@@ -42,6 +42,7 @@ export const AddDestinations = ({ map, layers }: AddDestinationsProps) => {
         map.getView().setCenter(fromLonLat(point) as Coordinate);
         map.getView().setZoom(15);
         updateRoute(r, layer);
+        console.log(layer !== layers.stopsLayer);
       } else {
         alert(
           'No address found. Please check for typos and/or add details (city, region, country)'
