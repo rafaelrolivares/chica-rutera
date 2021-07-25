@@ -18,7 +18,8 @@ const geoApifyFetcher = async (url: string) => {
   const data = await fetch(url, requestOptions);
   const response = await data.json();
   const [address] = response.features;
-  return address.properties;
+  if (address) return address.properties;
+  else return null;
 };
 
 export const addressSearch = async (

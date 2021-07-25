@@ -2,27 +2,20 @@ import { Feature, Map } from 'ol';
 import { Coordinate } from 'ol/coordinate';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { Vector as VectorSource } from 'ol/source';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { addressSearch } from '../requests/geoapify';
 import { createRoutePoint } from '../utils/createPoints';
-import { fileHandler } from '../utils/readFile';
-import { RouteLayersGroup } from './Routing.types';
+import {
+  GeocoderResponse,
+  RouteDestinations,
+  RouteLayersGroup,
+} from './Routing.types';
+import * as olExtent from 'ol/extent';
+import { Extent } from 'ol/extent';
 
 type AddDestinationsProps = {
   map: Map;
   layers: RouteLayersGroup;
-};
-
-type RouteDestinations = {
-  start: Feature | undefined;
-  end: Feature | undefined;
-  stops: Feature[];
-};
-
-type GeocoderResponse = {
-  formatted: string;
-  lat: number;
-  lon: number;
 };
 
 const placeHolderTxt = 'Search for an address';
@@ -34,22 +27,33 @@ export const AddDestinations = ({ map, layers }: AddDestinationsProps) => {
     stops: [],
   });
 
-  const handleAddressInput = (e: { target: any }, layer: VectorSource) => {
+  const maxPoints = 48;
+
+  const handleAddressInput = async (
+    e: { key: string; target: any },
+    layer: VectorSource
+  ) => {
+    const address = await searchForAddress(e.target.value, layer);
+    console.log(address);
+    e.target.value =
+      layer === layers.stopsLayer ? '' : address || e.target.value;
+  };
+
+  const searchForAddress = async (text: string, layer: VectorSource) => {
     const [lon, lat] = setLocationBias();
-    addressSearch(e.target.value, lon, lat).then((r: GeocoderResponse) => {
-      if (r) {
-        e.target.value = layer === layers.stopsLayer ? '' : r.formatted;
-        const point = [r.lon, r.lat];
-        map.getView().setCenter(fromLonLat(point) as Coordinate);
-        map.getView().setZoom(15);
-        updateRoute(r, layer);
-        console.log(layer !== layers.stopsLayer);
-      } else {
-        alert(
-          'No address found. Please check for typos and/or add details (city, region, country)'
-        );
-      }
-    });
+    const codedAddress: GeocoderResponse = await addressSearch(text, lon, lat);
+    if (codedAddress) {
+      const point = [codedAddress.lon, codedAddress.lat];
+      map.getView().setCenter(fromLonLat(point) as Coordinate);
+      map.getView().setZoom(15);
+      updateRoute(codedAddress, layer);
+      console.log(codedAddress.formatted);
+      return codedAddress.formatted;
+    } else {
+      alert(
+        'No address found. Please check for typos and/or add details (city, region, country)'
+      );
+    }
   };
 
   const setLocationBias = () => {
@@ -66,6 +70,14 @@ export const AddDestinations = ({ map, layers }: AddDestinationsProps) => {
   };
 
   const updatedDestinations = () => {
+    const layerExtent: Extent = olExtent.createEmpty();
+    Object.values(layers).forEach(function (layer) {
+      olExtent.extend(layerExtent, layer.getExtent());
+    });
+    map.getView().fit(layerExtent, {
+      size: map.getSize(),
+      padding: [50, 50, 50, 450],
+    });
     return {
       start: layers.startLayer.getFeatures()[0],
       end: layers.endLayer.getFeatures()[0],
@@ -91,9 +103,34 @@ export const AddDestinations = ({ map, layers }: AddDestinationsProps) => {
     }
   };
 
-  const fileReader = async (files: FileList | null) => {
-    const addresses = files && files[0] && fileHandler(files[0]);
-    console.log(addresses);
+  const fileReader = (files: FileList | null) => {
+    const file = files && files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.readAsText(file, 'UTF-8');
+      reader.onload = (e) =>
+        e && e.target && addPointsFromFile(e.target.result as string);
+      reader.onerror = () => console.log('error reading file');
+    }
+  };
+
+  const addPointsFromFile = (text: string) => {
+    const addresses = Array.from(
+      new Set(
+        text
+          .split('\n')
+          .filter((a) => a)
+          .map((a) => a.replace(/;/g, ', '))
+      )
+    );
+    addresses.forEach((a, i) => {
+      setTimeout(
+        () =>
+          layers.stopsLayer.getFeatures().length < maxPoints &&
+          searchForAddress(a as string, layers.stopsLayer),
+        1000 * (i + 1)
+      );
+    });
   };
 
   return (
@@ -136,6 +173,7 @@ export const AddDestinations = ({ map, layers }: AddDestinationsProps) => {
           <input
             id="search-stops"
             type="text"
+            disabled={layers.stopsLayer.getFeatures().length === maxPoints}
             onKeyDown={(e) =>
               e.key === 'Enter' && handleAddressInput(e, layers.stopsLayer)
             }
@@ -156,8 +194,8 @@ export const AddDestinations = ({ map, layers }: AddDestinationsProps) => {
             onChange={(e) => fileReader(e.target.files)}
           />
         </div>
-        {destinations.stops.length === 48 && (
-          <div>Maximum number of points (48) reached.</div>
+        {destinations.stops.length === maxPoints && (
+          <div>Maximum number of points ({maxPoints}) reached.</div>
         )}
         <div>
           {destinations.stops.map((s, i) => (

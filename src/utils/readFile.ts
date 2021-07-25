@@ -2,12 +2,12 @@ export const fileHandler = (file: File) => {
   const reader = new FileReader();
   reader.readAsText(file, 'UTF-8');
   reader.onload = () => readAddresses(reader.result as string);
-
   reader.onerror = () => console.log('error reading file');
 
 };
 
 const readAddresses = (text: string) => {
+  console.log(text);
   return Array.from(
     new Set(
       text
