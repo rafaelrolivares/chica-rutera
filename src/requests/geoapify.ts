@@ -1,3 +1,7 @@
+import { Map } from 'ol';
+import { Coordinate } from 'ol/coordinate';
+import { toLonLat } from 'ol/proj';
+
 export const geoApifyUrl = 'https://api.geoapify.com/v1/';
 
 const geocoder = geoApifyUrl + 'geocode/';
@@ -17,29 +21,36 @@ export const getIpInfo = async () => {
 const geoApifyFetcher = async (url: string) => {
   const data = await fetch(url, requestOptions);
   const response = await data.json();
-  const [address] = response.features;
-  return address.properties;
+  console.log(response);
+  return response.features;
 };
+
+type AddressApis = 'search' | 'autocomplete';
 
 export const addressSearch = async (
   address: string,
-  lon?: number,
-  lat?: number
+  api: AddressApis,
+  limit: number,
+  map: Map
 ) => {
-  const searchUrl = geocoder + 'search';
+  const viewCenter = map.getView().getCenter() as Coordinate;
+  const [lon, lat] = toLonLat(viewCenter);
+  const searchUrl = geocoder + api;
   const text = `?text=${address}`;
-  const limit = '&limit=1';
-  const bias =
-    lat || lon ? `&bias=proximity:${lon},${lat}|countrycode:none` : '';
+  const limitParam = `&limit=${limit}`;
+  const bias = `&bias=proximity:${lon},${lat}|countrycode:auto`;
 
-  const url = searchUrl + text + limit + bias + keyParam;
+  const url = searchUrl + text + limitParam + bias + keyParam;
 
-  return await geoApifyFetcher(url);
+  const result = await geoApifyFetcher(url);
+  const responses = result.map((r: any) => r.properties);
+  return limit === 1 ? responses[0] : responses;
 };
 
 export const reverseGeocode = async ([lon, lat]: any) => {
   const geocodeUrl = geocoder + 'reverse';
   const point = `?lat=${lat}&lon=${lon}`;
   const url = geocodeUrl + point + keyParam;
-  return await geoApifyFetcher(url);
+  const [result] = await geoApifyFetcher(url);
+  return result.properties;
 };

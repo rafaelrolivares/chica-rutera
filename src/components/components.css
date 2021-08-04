@@ -36,12 +36,11 @@ input[type='text'] {
   font-family: 'Noto Sans JP', sans-serif;
   font-size: 12px;
   width: 250px;
-  flex-grow: 1;
+  right: 0;
 }
 
 .search-item {
-  display: flex;
-  flex-direction: row;
+  display: block;
   width: 100%;
   margin: 10px 0;
 }
@@ -120,4 +119,12 @@ input[type='text'] {
   cursor: pointer;
   width: fit-content;
   margin: 10px auto;
+}
+
+.autocomplete-suggestion {
+  font-size: 12px;
+  cursor: pointer;
+  background-color: whitesmoke;
+  padding: 2px;
+  margin: 2px;
 }

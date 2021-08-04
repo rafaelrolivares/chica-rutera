@@ -1,8 +1,9 @@
-import { Feature, Map, View } from 'ol';
+import { Feature, Map } from 'ol';
 import { Coordinate } from 'ol/coordinate';
-import { fromLonLat, toLonLat } from 'ol/proj';
+import { fromLonLat } from 'ol/proj';
 import React, { useEffect, useState } from 'react';
 import { addressSearch } from '../requests/geoapify';
+import { Autocomplete } from './Autocomplete';
 
 type RoutePointsProps = {
   updateStartFunction: (location: any) => void;
@@ -21,7 +22,9 @@ type GeocoderResponse = {
   formatted: string;
   lat: number;
   lon: number;
-}
+};
+
+type LayerItem = 'start' | 'end' | 'stops';
 
 export const RoutePoints = ({
   updateStartFunction,
@@ -35,26 +38,39 @@ export const RoutePoints = ({
   copyEndFromStart,
   clearStopsFunction,
 }: RoutePointsProps) => {
+  const [addressSuggestions, setAddressSugestions] = useState<string[]>([]);
+  const [activeInput, setActiveInput] = useState<LayerItem>();
+
   const handleAddressInput = async (
     e: { key: string; target: any },
-    item: string
+    item: LayerItem
   ) => {
-    e.key === 'Enter' && searchForAddress(e.target.value, item, e.target);
+    setActiveInput(item);
+    if (e.target.value.length >= 3) {
+      if (e.key === 'Enter') {
+        searchForAddress(e.target.value, item, e.target);
+      } else {
+        addressSearch(e.target.value, 'autocomplete', 5, map).then(
+          (res: GeocoderResponse[]) =>
+            setAddressSugestions(res.map((r) => r.formatted))
+        );
+      }
+    } else if (e.key === 'Enter') {
+      alert('Please type at least three characters');
+    }
+  };
+
+  const selectFromAutocomplete = (address: string) => {
+    setAddressSugestions([]);
+    activeInput && searchForAddress(address, activeInput);
   };
 
   const searchForAddress = (
     value: string,
-    item: string,
+    item: LayerItem,
     elementToUpdate?: { value: string } | undefined
   ) => {
-    let mapCenter = [0, 0];
-    const viewCenter = map.getView().getCenter();
-    if (viewCenter !== undefined) {
-      mapCenter = toLonLat(viewCenter);
-    }
-
-    const [lon, lat] = mapCenter;
-    addressSearch(value, lon, lat).then((r: GeocoderResponse) => {
+    addressSearch(value, 'search', 1, map).then((r: GeocoderResponse) => {
       if (r) {
         if (elementToUpdate) {
           elementToUpdate.value = item === 'stops' ? '' : r.formatted;
@@ -71,7 +87,7 @@ export const RoutePoints = ({
     });
   };
 
-  const updateState = (r: any, item: string) => {
+  const updateState = (r: any, item: LayerItem) => {
     if (item === 'start') {
       updateStartFunction(r);
     } else if (item === 'end') {
@@ -122,6 +138,7 @@ export const RoutePoints = ({
           placeholder={placeHolderTxt}
           defaultValue={currentStart || ''}
         />
+        {activeInput === 'start' && <Autocomplete items={addressSuggestions} selectAction={selectFromAutocomplete}/>}
       </div>
       <div className="search-item">
         <label htmlFor="search-end">Ending point:</label>
@@ -137,6 +154,7 @@ export const RoutePoints = ({
             Same as start
           </span>
         )}
+        {activeInput === 'end' && <Autocomplete items={addressSuggestions} selectAction={selectFromAutocomplete}/>}
       </div>
       <div>
         <div className="search-item">
@@ -147,6 +165,9 @@ export const RoutePoints = ({
             onKeyDown={(e) => handleAddressInput(e, 'stops')}
             placeholder={placeHolderTxt}
           />
+          {activeInput === 'stops' && (
+            <Autocomplete items={addressSuggestions} selectAction={selectFromAutocomplete} />
+          )}
         </div>
         <div className="search-item">
           <label htmlFor="uploader">Or upload a file (txt/csv):</label>
